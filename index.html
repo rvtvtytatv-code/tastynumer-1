@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Taste of Home v1400</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        :root {
+            --bg:#f7f3ea;
+            --card:#ffffff;
+            --text:#171717;
+            --muted:#777;
+            --red:#d92f2f;
+            --dark:#1f1f1f;
+            --gold:#c5a059;
+            --shadow:0 14px 38px rgba(0,0,0,.10);
+        }
+        html, body { margin:0; min-height:100%; background:var(--bg); color:var(--text); font-family:Arial, sans-serif; }
+        body { padding-bottom:94px; }
+        button, input, select, textarea { font-family:inherit; }
+        button { border:0; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+        .app { width:100%; max-width:620px; min-height:100vh; margin:0 auto; }
+        .tab { display:none; }
+        .tab.active { display:block; }
+
+        .hero {
+            height:310px;
+            position:relative;
+            overflow:hidden;
+            border-radius:0 0 30px 30px;
+            background:#222;
+        }
+        .hero-slide {
+            position:absolute;
+            inset:0;
+            background-size:cover;
+            background-position:center;
+            opacity:0;
+            transition:opacity .35s ease;
+            pointer-events:none;
+        }
+        .hero-slide.active {
+            opacity:1;
+        }
+        .hero-slide:before {
+            content:"";
+            position:absolute;
+            inset:0;
+            background:linear-gradient(180deg,rgba(0,0,0,.22),rgba(0,0,0,.76));
+            pointer-events:none;
+        }
+        .hero-content {
+            position:relative;
+            z-index:2;
+            width:100%;
+        }
+        .hero-content-fixed {
+            position:absolute;
+            left:24px;
+            right:24px;
+            bottom:24px;
+            z-index:5;
+            width:auto;
+            color:#fff;
+        }
+        .hero-title {
+            margin:0 0 8px;
+            font-size:34px;
+            line-height:1;
+            font-weight:900;
+            letter-spacing:.2px;
+            color:#fff;
+            text-shadow:0 3px 14px rgba(0,0,0,.85), 0 1px 3px rgba(0,0,0,.95);
+        }
+        .hero-subtitle {
+            margin:0 0 18px;
+            font-size:16px;
+            font-weight:700;
+            opacity:.98;
+            color:#fff;
+            text-shadow:0 2px 10px rgba(0,0,0,.78), 0 1px 2px rgba(0,0,0,.9);
+        }
+        .search {
+            display:flex;
+            align-items:center;
+            gap:10px;
+            border-radius:18px;
+            padding:13px 15px;
+            background:rgba(255,255,255,.16);
+            border:1px solid rgba(255,255,255,.28);
+            backdrop-filter:blur(10px);
+            -webkit-backdrop-filter:blur(10px);
+            box-shadow:0 8px 24px rgba(0,0,0,.18);
+            pointer-events:auto;
+        }
+        .search input {
+            width:100%;
+            border:0;
+            outline:0;
+            background:transparent;
+            color:#fff;
+            font-size:15px;
+            font-weight:700;
+        }
+        .search input::placeholder {
+            color:rgba(255,255,255,.82);
+        }
+
+        .top-row { display:flex; justify-content:flex-end; padding:18px 18px 0; }
+        .lang { display:flex; gap:4px; padding:5px; background:#fff; border-radius:999px; box-shadow:var(--shadow); }
+        .lang button { padding:8px 13px; border-radius:999px; background:transparent; color:#777; font-weight:900; }
+        .lang button.active { background:var(--red); color:#fff; }
+
+        .working-hours { display:none; margin:0 18px 16px; padding:14px 16px; background:#fff; border-radius:18px; box-shadow:var(--shadow); }
+        .working-hours.active { display:block; }
+        .working-hours h3 { margin:0 0 6px; color:var(--red); font-size:15px; font-weight:900; }
+        .working-hours div { color:#555; font-size:14px; line-height:1.35; white-space:pre-line; }
+
+        .categories { display:flex; gap:10px; overflow-x:auto; padding:18px; scrollbar-width:none; }
+        .categories::-webkit-scrollbar { display:none; }
+        .cat { flex:0 0 auto; padding:11px 17px; border-radius:999px; background:#fff; box-shadow:var(--shadow); color:#333; font-weight:900; }
+        .cat.active { background:var(--red); color:#fff; }
+
+        .section-title { display:flex; align-items:center; justify-content:space-between; padding:0 18px 14px; font-size:23px; font-weight:900; }
+        .loading-dot { color:#111; font-size:22px; }
+        .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; padding:0 18px 22px; }
+        .product { position:relative; overflow:hidden; border-radius:22px; background:#fff; box-shadow:var(--shadow); transition:transform .15s ease, box-shadow .15s ease; }
+        .product:active { transform:scale(.985); }
+        .product img { display:block; width:100%; height:150px; object-fit:cover; background:#eee; }
+        .product-body { padding:13px; }
+        .product-name { min-height:38px; font-size:14px; font-weight:900; line-height:1.25; }
+        .product-weight { margin-top:4px; color:var(--muted); font-size:12px; }
+        .side-mark { display:inline-block; margin-top:7px; padding:4px 8px; border-radius:999px; background:#fff3cd; color:#8a6500; font-size:12px; font-weight:900; }
+        .product-bottom { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:11px; }
+        .price { color:var(--red); font-size:16px; font-weight:900; }
+        .add { width:39px; height:39px; border-radius:14px; background:var(--dark); color:#fff; font-size:24px; line-height:1; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 20px rgba(0,0,0,.18); }
+        .add:active { transform:scale(.94); }
+        .badge { position:absolute; left:10px; top:10px; padding:5px 9px; border-radius:9px; background:var(--gold); color:#fff; font-size:10px; font-weight:900; text-transform:uppercase; }
+        .empty { grid-column:1/-1; text-align:center; color:#888; padding:60px 20px; line-height:1.45; }
+        .error-box { grid-column:1/-1; margin:16px 0; padding:18px; border-radius:20px; background:#fff; box-shadow:var(--shadow); color:#555; text-align:center; }
+        .retry { margin-top:12px; padding:12px 18px; border-radius:14px; background:var(--red); color:#fff; font-weight:900; }
+
+        .cart-item { margin:14px 18px; padding:14px; display:flex; align-items:center; gap:12px; border-radius:22px; background:#fff; box-shadow:var(--shadow); }
+        .cart-item img { flex:0 0 auto; width:72px; height:72px; border-radius:16px; object-fit:cover; background:#eee; }
+        .cart-main { flex:1; min-width:0; }
+        .cart-name { font-weight:900; line-height:1.25; }
+        .cart-side, .cart-extra { margin-top:4px; color:#777; font-size:12px; line-height:1.25; }
+        .cart-price { margin-top:5px; color:var(--red); font-weight:900; }
+        .qty { display:flex; align-items:center; gap:10px; flex:0 0 auto; }
+        .qty button { width:32px; height:32px; border-radius:50%; background:#fff; border:1px solid #ddd; font-size:19px; font-weight:900; display:flex; align-items:center; justify-content:center; }
+        .qty strong { min-width:18px; text-align:center; }
+
+        .form { margin:18px; padding:18px; border-radius:28px; background:#fff; box-shadow:var(--shadow); }
+        .field { margin-bottom:14px; }
+        .field label { display:block; margin-bottom:6px; color:#777; font-size:12px; font-weight:900; text-transform:uppercase; }
+        .field input, .field select, .field textarea { width:100%; border:1px solid #eee; border-radius:15px; background:#f8f8f5; padding:13px 14px; outline:0; font-size:15px; }
+        .field textarea { min-height:86px; resize:vertical; }
+        input[type="datetime-local"] { min-height:48px; }
+        .radio-row { display:flex !important; align-items:center; gap:8px; margin:9px 0; color:#333 !important; font-size:14px !important; font-weight:700 !important; text-transform:none !important; }
+        .radio-row input { width:auto; }
+        .summary { border-top:1px solid #eee; margin-top:14px; padding-top:14px; }
+        .line { display:flex; justify-content:space-between; gap:12px; margin:8px 0; font-size:15px; }
+        .line.total { font-size:18px; font-weight:900; }
+        .note { color:#777; font-size:13px; margin-top:8px; }
+        .checkout { width:100%; margin-top:16px; padding:17px; border-radius:18px; background:var(--red); color:#fff; font-size:16px; font-weight:900; box-shadow:0 10px 25px rgba(212,47,47,.28); }
+        .checkout:disabled { background:#999; box-shadow:none; }
+
+        .profile-header { padding:38px 20px; text-align:center; color:#fff; background:linear-gradient(45deg,#222,#333); border-radius:0 0 32px 32px; }
+        .profile-card { margin:18px; padding:18px; border-radius:22px; background:#fff; box-shadow:var(--shadow); }
+        .history-item { padding:12px 0; border-top:1px solid #eee; }
+
+        .reviews-head { padding:34px 20px 18px; text-align:center; }
+        .reviews-head h1 { margin:0 0 8px; font-size:32px; font-weight:900; }
+        .reviews-head p { margin:0; color:var(--muted); line-height:1.35; }
+        .review-form, .review-card { margin:0 18px 16px; padding:18px; border-radius:24px; background:#fff; box-shadow:var(--shadow); }
+        .review-form h2, .review-list-title { margin:0 0 14px; font-size:22px; font-weight:900; }
+        .star-row { display:flex; gap:8px; margin:8px 0 14px; }
+        .star-btn { width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:14px; background:#f4f4f0; color:#b8b8b8; font-size:23px; font-weight:900; }
+        .star-btn.active { background:#fff4d6; color:#f59e0b; }
+        .review-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:8px; }
+        .review-name { font-weight:900; }
+        .review-date { color:#999; font-size:12px; margin-top:3px; }
+        .review-stars { color:#f59e0b; letter-spacing:1px; white-space:nowrap; }
+        .review-text { color:#444; line-height:1.45; white-space:pre-wrap; word-break:break-word; }
+        .review-source { display:inline-flex; margin-top:10px; padding:5px 9px; border-radius:999px; background:#f3f4f6; color:#666; font-size:11px; font-weight:900; }
+        .review-disabled { margin:18px; padding:24px; border-radius:22px; background:#fff; box-shadow:var(--shadow); text-align:center; color:#777; }
+        .review-thanks { padding:14px 16px; border-radius:16px; background:#ecfdf5; color:#166534; font-weight:900; margin-bottom:14px; display:none; }
+        .review-thanks.active { display:block; }
+
+        .bottom-nav { position:fixed; z-index:1000; left:50%; bottom:0; transform:translateX(-50%); width:100%; max-width:620px; display:flex; justify-content:space-around; padding:11px 10px calc(17px + env(safe-area-inset-bottom)); border-top:1px solid #eee; background:rgba(255,255,255,.96); backdrop-filter:blur(10px); }
+        .nav { position:relative; display:flex; flex-direction:column; align-items:center; gap:4px; background:transparent; color:#999; font-size:11px; font-weight:900; }
+        .nav.active { color:var(--red); }
+        .nav-icon { position:relative; font-size:23px; display:inline-flex; align-items:center; justify-content:center; min-width:32px; min-height:27px; }
+        .cart-badge { position:absolute; top:-6px; right:-11px; min-width:18px; height:18px; display:none; align-items:center; justify-content:center; border-radius:999px; padding:0 5px; background:var(--red); color:#fff; font-size:10px; font-weight:900; }
+
+        .modal { position:fixed; inset:0; z-index:2000; display:none; align-items:flex-end; background:rgba(0,0,0,.48); }
+        .modal.active { display:flex; }
+        .sheet { width:100%; max-width:620px; max-height:88vh; overflow:auto; margin:0 auto; padding:22px; border-radius:28px 28px 0 0; background:#fff; box-shadow:0 -14px 40px rgba(0,0,0,.16); transform:translateY(18px); animation:sheetIn .18s ease forwards; }
+        @keyframes sheetIn { to { transform:translateY(0); } }
+        .sheet img { display:block; width:100%; max-height:260px; object-fit:cover; border-radius:22px; background:#eee; }
+        .side-options { display:grid; gap:9px; margin-top:12px; }
+        .side-option { padding:13px 14px; border-radius:14px; border:1px solid #eee; background:#fafafa; text-align:left; font-weight:900; }
+        .side-option.active { border-color:var(--red); background:#fff0f0; color:var(--red); }
+        .extra-options { margin-top:14px; }
+        .extra-title { margin:0 0 8px; font-size:18px; font-weight:900; }
+        .extra-option { display:flex; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid #eee; font-weight:900; }
+        .extra-option input { width:20px; height:20px; accent-color:var(--red); }
+        .modal-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px; }
+        .secondary { padding:14px; border-radius:16px; background:#222; color:#fff; font-weight:900; }
+
+        .add-toast { position:fixed; z-index:2147483647; left:50%; top:18px; transform:translateX(-50%) translateY(-18px) scale(.92); display:flex; align-items:center; gap:9px; padding:14px 19px; border-radius:999px; background:#1f1f1f; color:#fff; font-size:15px; font-weight:900; box-shadow:0 16px 40px rgba(0,0,0,.32); opacity:0; pointer-events:none; white-space:nowrap; }
+        .add-toast.show { animation:addToastVisible 1.4s ease forwards; }
+        @keyframes addToastVisible { 0%{opacity:0;transform:translateX(-50%) translateY(-18px) scale(.92)} 12%{opacity:1;transform:translateX(-50%) translateY(0) scale(1.04)} 22%,78%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)} 100%{opacity:0;transform:translateX(-50%) translateY(-10px) scale(.96)} }
+        .fly-image, .fly-dot { position:fixed; z-index:2147483646; pointer-events:none; will-change:transform,opacity; }
+        .fly-image { width:76px; height:76px; object-fit:cover; border-radius:18px; box-shadow:0 14px 34px rgba(0,0,0,.28); }
+        .fly-dot { width:58px; height:58px; display:flex; align-items:center; justify-content:center; border-radius:999px; background:var(--red); color:#fff; font-size:24px; font-weight:900; box-shadow:0 14px 34px rgba(212,47,47,.35); }
+        .cart-bump { animation:cartBump .55s ease !important; }
+        @keyframes cartBump { 0%{transform:scale(1)} 35%{transform:scale(1.34)} 70%{transform:scale(.92)} 100%{transform:scale(1)} }
+
+        @media(max-width:420px){ .grid{grid-template-columns:1fr;} .hero{height:310px;} .hero-title{font-size:30px;} }
+
+        .qty-btn {
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .qty-number {
+            min-width: 24px;
+            text-align: center;
+            display: inline-block;
+        }
+
+        .qty-flash {
+            animation: qtyFlash .22s ease;
+        }
+
+        @keyframes qtyFlash {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <section id="menu-tab" class="tab active">
+        <div class="hero" id="hero"></div>
+        <div class="top-row">
+            <div class="lang">
+                <button id="lang-ru" data-lang="ru">RU</button>
+                <button id="lang-en" data-lang="en">EN</button>
+            </div>
+        </div>
+        <div class="working-hours" id="working-hours-block">
+            <h3 id="working-hours-title">Часы работы</h3>
+            <div id="working-hours-text"></div>
+        </div>
+        <div class="categories" id="categories"></div>
+        <div class="section-title">
+            <span id="menu-title">Меню</span>
+            <span id="loading" class="loading-dot">...</span>
+        </div>
+        <div class="grid" id="products"><div class="empty">Загрузка...</div></div>
+    </section>
+
+    <section id="cart-tab" class="tab">
+        <div class="section-title" style="padding-top:24px;"><span id="cart-title">Корзина</span></div>
+        <div id="cart-list"></div>
+        <form class="form" id="order-form">
+            <div class="field"><label id="label-name">Имя</label><input id="order-name" autocomplete="name" required></div>
+            <div class="field"><label id="label-phone">Телефон</label><input id="order-phone" autocomplete="tel" required></div>
+            <div class="field"><label id="label-type">Получение</label><select id="order-type"><option value="delivery">Доставка</option><option value="pickup">Самовывоз</option></select></div>
+            <div class="field" id="district-field"><label id="label-district">Район</label><select id="order-district"></select></div>
+            <div class="field" id="address-field"><label id="label-address">Адрес</label><input id="order-address" autocomplete="street-address"></div>
+            <div class="field"><label id="label-delivery-datetime">Выберите время, к которому заказ должен быть готов</label><input id="order-delivery-datetime" type="datetime-local" required><div class="note" id="delivery-datetime-note">Выберите дату и время.</div></div>
+            <div class="field">
+                <label id="label-payment">Способ оплаты</label>
+                <label class="radio-row"><input type="radio" name="payment_method" value="cash" checked><span id="payment-cash-label">Наличные, +20 000 ₫ за приём денег Grab</span></label>
+                <label class="radio-row"><input type="radio" name="payment_method" value="transfer"><span id="payment-transfer-label">Перевод</span></label>
+                <label class="radio-row"><input type="radio" name="payment_method" value="card"><span id="payment-card-label">Карта</span></label>
+            </div>
+            <div class="field"><label id="label-comment">Комментарий</label><textarea id="order-comment"></textarea></div>
+            <div class="summary">
+                <div class="line"><span id="subtotal-label">Сумма блюд</span><strong id="subtotal">0 ₫</strong></div>
+                <div class="line"><span id="delivery-label">Доставка/сбор</span><strong id="delivery">0 ₫</strong></div>
+                <div class="note" id="delivery-note"></div>
+                <div class="line total"><span id="total-label">Итого</span><strong id="total">0 ₫</strong></div>
+            </div>
+            <button class="checkout" id="checkout" type="submit">Оформить заказ</button>
+        </form>
+    </section>
+
+    <section id="profile-tab" class="tab">
+        <div class="profile-header"><h1>Taste of Home</h1><p id="profile-subtitle">История заказов</p></div>
+        <div class="profile-card"><h2 id="history-title">История</h2><div id="history"></div></div>
+    </section>
+
+    <section id="reviews-tab" class="tab">
+        <div class="reviews-head">
+            <h1 id="reviews-page-title">Отзывы</h1>
+            <p id="reviews-page-subtitle">Оцените заказ или посмотрите, что пишут гости.</p>
+        </div>
+        <div id="reviews-disabled" class="review-disabled" style="display:none;">Отзывы временно отключены.</div>
+        <div id="review-form-block" class="review-form">
+            <div id="review-thanks" class="review-thanks">Спасибо! Отзыв отправлен.</div>
+            <h2 id="review-form-title">Оставить отзыв</h2>
+            <div class="field"><label id="review-name-label">Имя</label><input id="review-name" autocomplete="name"></div>
+            <div class="field"><label id="review-rating-label">Оценка</label><div class="star-row" id="review-stars"></div></div>
+            <div class="field"><label id="review-text-label">Отзыв</label><textarea id="review-text" maxlength="1200" placeholder="Напишите пару слов"></textarea></div>
+            <button class="checkout" id="review-submit" type="button">Отправить отзыв</button>
+        </div>
+        <div class="section-title" style="padding-top:4px;"><span id="reviews-list-title">Отзывы гостей</span></div>
+        <div id="reviews-list"></div>
+    </section>
+</div>
+
+<div class="bottom-nav">
+    <button class="nav active" data-tab="menu"><span class="nav-icon">🍽️</span><span id="nav-menu">Меню</span></button>
+    <button class="nav" data-tab="cart"><span class="nav-icon">🛒<span class="cart-badge" id="cart-badge">0</span></span><span id="nav-cart">Корзина</span></button>
+    <button class="nav" data-tab="reviews"><span class="nav-icon">⭐</span><span id="nav-reviews">Отзывы</span></button>
+    <button class="nav" data-tab="profile"><span class="nav-icon">👤</span><span id="nav-profile">Профиль</span></button>
+</div>
+
+<div class="modal" id="product-modal">
+    <div class="sheet">
+        <img id="modal-img" src="" alt="">
+        <h2 id="modal-name" style="margin:16px 0 6px;"></h2>
+        <div id="modal-price" class="price"></div>
+        <p id="modal-desc" style="color:#666;"></p>
+        <div id="modal-sides"></div>
+        <div class="modal-actions">
+            <button type="button" class="secondary" id="modal-close">Закрыть</button>
+            <button type="button" class="checkout" id="modal-add" style="margin:0;">Добавить</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="review-modal">
+    <div class="sheet">
+        <h2 id="review-modal-title" style="margin:0 0 8px;">Оцените заказ</h2>
+        <p id="review-modal-subtitle" style="color:#666;margin:0 0 14px;">Поставьте звёзды и напишите пару слов.</p>
+        <div class="field"><label id="review-modal-name-label">Имя</label><input id="review-modal-name" autocomplete="name"></div>
+        <div class="field"><label id="review-modal-rating-label">Оценка</label><div class="star-row" id="review-modal-stars"></div></div>
+        <div class="field"><label id="review-modal-text-label">Отзыв</label><textarea id="review-modal-text" maxlength="1200"></textarea></div>
+        <div class="modal-actions">
+            <button type="button" class="secondary" id="review-modal-later">Позже</button>
+            <button type="button" class="checkout" id="review-modal-submit" style="margin:0;">Отправить отзыв</button>
+        </div>
+    </div>
+</div>
+
+<script>
+'use strict';
+
+console.log('✅ CLEAN FRONTEND v1300 LOADED');
+
+const APP_CONFIG = {
+    API_BASE_URL: 'https://parcel-productions-elliott-greater.trycloudflare.com',
+    GROUP_URL: 'https://t.me/homemade_global_cuisine'
+};
+
+const tg = window.Telegram?.WebApp || {
+    ready(){},
+    expand(){},
+    showAlert(message){ alert(message); },
+    showConfirm(message, callback){ callback(confirm(message)); },
+    HapticFeedback:{ impactOccurred(){} },
+    initDataUnsafe:{}
+};
+
+tg.ready();
+tg.expand();
+
+const PLACEHOLDER_IMG = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="500" height="360"><rect width="100%" height="100%" fill="#eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#999" font-size="26">Taste of Home</text></svg>`);
+
+const state = {
+    isLoading:true,
+    lang:localStorage.getItem('toh_lang') || 'ru',
+    products:[],
+    categories:[],
+    banners:[],
+    reviews:[],
+    reviewSettings:{reviews_enabled:'1', reviews_auto_publish:'1', review_followup_enabled:'1'},
+    reviewRating:5,
+    reviewModalRating:5,
+    reviewOrder:null,
+    deliverySettings:[],
+    activeCategory:'all',
+    searchTerm:localStorage.getItem('toh_search') || '',
+    cart:loadJson('toh_cart', []),
+    history:loadJson('toh_history', []),
+    selectedProduct:null,
+    selectedSide:null,
+    selectedExtras:[],
+    workingHours:'',
+    workingHoursRu:'',
+    workingHoursEn:'',
+    heroTimer:null
+};
+
+const i18n = {
+    ru:{menu:'Меню',cart:'Корзина',profile:'Профиль',search:'Поиск блюд...',loading:'Загрузка...',all:'Все',add:'Добавить',close:'Закрыть',chooseSide:'Выберите гарнир',side:'Гарнир',needSide:'Выберите гарнир',unavailable:'Нет в наличии',cartEmpty:'Корзина пустая',name:'Имя',phone:'Телефон',type:'Получение',delivery:'Доставка',pickup:'Самовывоз',district:'Район',address:'Адрес',deliveryDateTime:'Выберите время, к которому заказ должен быть готов',deliveryDateTimeNote:'Выберите дату и время.',payment:'Способ оплаты',cash:'Наличные, +20 000 ₫ за приём денег Grab',transfer:'Перевод',card:'Карта',comment:'Комментарий',subtotal:'Сумма блюд',deliveryFee:'Доставка/сбор',total:'Итого',checkout:'Оформить заказ',required:'Заполните обязательные поля',chooseDateTime:'Выберите дату и время доставки',confirm:'Оформить заказ?',sending:'Отправляем...',success:'Заказ оформлен',history:'История заказов',noHistory:'Заказов пока нет',free:'Бесплатно',grab:'По тарифу Grab',cashFee:'Доплата Grab за приём наличных',deliveryTimePrefix:'Время доставки',addOn:'Дополнительно',workingHours:'Часы работы',reviews:'Отзывы',reviewsSubtitle:'Оцените заказ или посмотрите, что пишут гости.',reviewForm:'Оставить отзыв',reviewName:'Имя',reviewRating:'Оценка',reviewText:'Отзыв',reviewPlaceholder:'Напишите пару слов',reviewSubmit:'Отправить отзыв',reviewGuests:'Отзывы гостей',reviewEmpty:'Отзывов пока нет',reviewThanks:'Спасибо! Отзыв отправлен.',reviewDisabled:'Отзывы временно отключены.',reviewLater:'Позже',reviewOrderTitle:'Оцените заказ',reviewOrderSubtitle:'Поставьте звёзды и напишите пару слов.',reviewRequired:'Поставьте оценку и напишите отзыв',loadError:'Не удалось загрузить меню. Проверьте backend и ссылку Cloudflare.',retry:'Обновить',added:'Добавлено в корзину'},
+    en:{menu:'Menu',cart:'Cart',profile:'Profile',search:'Search dishes...',loading:'Loading...',all:'All',add:'Add',close:'Close',chooseSide:'Choose a side dish',side:'Side',needSide:'Choose a side dish',unavailable:'Unavailable',cartEmpty:'Cart is empty',name:'Name',phone:'Phone',type:'Type',delivery:'Delivery',pickup:'Pickup',district:'District',address:'Address',deliveryDateTime:'Delivery date and time',deliveryDateTimeNote:'Choose exact date and time.',payment:'Payment method',cash:'Cash, +20 000 ₫ Grab cash collection fee',transfer:'Transfer',card:'Card',comment:'Comment',subtotal:'Food subtotal',deliveryFee:'Delivery/fee',total:'Total',checkout:'Place order',required:'Fill required fields',chooseDateTime:'Choose delivery date and time',confirm:'Place order?',sending:'Sending...',success:'Order placed',history:'Order history',noHistory:'No orders yet',free:'Free',grab:'Grab tariff',cashFee:'Grab cash collection fee',deliveryTimePrefix:'Delivery time',addOn:'Add on',workingHours:'Working hours',reviews:'Reviews',reviewsSubtitle:'Rate your order or see what guests write.',reviewForm:'Leave a review',reviewName:'Name',reviewRating:'Rating',reviewText:'Review',reviewPlaceholder:'Write a few words',reviewSubmit:'Send review',reviewGuests:'Guest reviews',reviewEmpty:'No reviews yet',reviewThanks:'Thank you! Review sent.',reviewDisabled:'Reviews are temporarily disabled.',reviewLater:'Later',reviewOrderTitle:'Rate your order',reviewOrderSubtitle:'Choose stars and write a few words.',reviewRequired:'Choose a rating and write a review',loadError:'Failed to load menu. Check backend and Cloudflare URL.',retry:'Refresh',added:'Added to cart'}
+};
+
+function t(key){ return i18n[state.lang][key] || key; }
+function loadJson(key, fallback){
+    try {
+        return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+    } catch (error) {
+        console.warn('LOCALSTORAGE READ ERROR:', key, error);
+        return fallback;
+    }
+}
+
+function cartItemForStorage(item){
+    const safeImg = item?.img && !String(item.img).startsWith('data:image') ? String(item.img) : '';
+    return {
+        cartKey:String(item.cartKey || ''),
+        id:String(item.id || ''),
+        img:safeImg,
+        name:String(item.name || ''),
+        base_price:Number(item.base_price || 0),
+        price:Number(item.price || 0),
+        extras:Array.isArray(item.extras) ? item.extras : [],
+        selected_extras:Array.isArray(item.selected_extras) ? item.selected_extras : [],
+        qty:Math.max(1, Number(item.qty || 1)),
+        side_choice:String(item.side_choice || ''),
+        side_choice_ru:String(item.side_choice_ru || ''),
+        side_choice_en:String(item.side_choice_en || '')
+    };
+}
+
+function saveCart(){
+    const safeCart = state.cart.map(cartItemForStorage).filter(item => item.id && item.qty > 0);
+    const data = JSON.stringify(safeCart);
+
+    try {
+        localStorage.setItem('toh_cart', data);
+    } catch (error) {
+        console.warn('CART STORAGE QUOTA FIX: очищаю старую тяжёлую корзину', error);
+        try {
+            localStorage.removeItem('toh_cart');
+            localStorage.setItem('toh_cart', data);
+        } catch (secondError) {
+            console.error('CART STORAGE FAILED:', secondError);
+            tg.showAlert('Корзина очищена из-за переполненной памяти браузера. Добавьте товар ещё раз.');
+            state.cart = [];
+            try { localStorage.removeItem('toh_cart'); } catch (_) {}
+        }
+    }
+}
+function saveHistory(){ localStorage.setItem('toh_history', JSON.stringify(state.history)); }
+function formatPrice(value){ return `${Number(value || 0).toLocaleString('ru-RU')} ₫`; }
+function escapeHtml(value){ return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch])); }
+function apiUrl(path){ if (String(path).startsWith('http')) return path; return APP_CONFIG.API_BASE_URL.replace(/\/$/, '') + '/' + String(path).replace(/^\//, ''); }
+
+async function apiGet(path){
+    const url = apiUrl(path) + (String(path).includes('?') ? '&' : '?') + '_=' + Date.now();
+    const response = await fetch(url, { cache:'no-store', headers:{ 'Cache-Control':'no-cache', 'Pragma':'no-cache', 'ngrok-skip-browser-warning':'true' } });
+    if (!response.ok) throw new Error(path + ' HTTP ' + response.status);
+    return response.json();
+}
+
+async function apiPost(path, body){
+    const response = await fetch(apiUrl(path), { method:'POST', cache:'no-store', headers:{ 'Content-Type':'application/json', 'Cache-Control':'no-cache', 'ngrok-skip-browser-warning':'true' }, body:JSON.stringify(body) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.detail || data.message || 'Server error');
+    return data;
+}
+
+function imageOf(item){
+    const src = item?.image_data_url || item?.image_full_url || item?.image_url || item?.img || item?.image || '';
+    if (!src) return PLACEHOLDER_IMG;
+    if (String(src).startsWith('data:image') || String(src).startsWith('http')) return src;
+    return APP_CONFIG.API_BASE_URL.replace(/\/$/, '') + '/' + String(src).replace(/^\//, '');
+}
+
+function storageImageOf(item){
+    // В localStorage нельзя сохранять base64-картинки: они быстро переполняют память браузера.
+    const src = item?.image_full_url || item?.image_url || item?.img || item?.image || '';
+    if (!src || String(src).startsWith('data:image')) return '';
+    if (String(src).startsWith('http')) return src;
+    return APP_CONFIG.API_BASE_URL.replace(/\/$/, '') + '/' + String(src).replace(/^\//, '');
+}
+
+function cartDisplayImage(item){
+    const product = state.products.find(p => String(p.id) === String(item?.id));
+    return product?.img || item?.img || PLACEHOLDER_IMG;
+}
+
+function splitBilingualName(value){
+    const raw = String(value || '').trim();
+    if (!raw) return {name:'', ru:'', en:''};
+    let ru = raw, en = raw;
+    if (raw.includes('::')) { const p = raw.split('::'); ru = p.shift(); en = p.join('::'); }
+    else if (raw.includes(' / ')) { const p = raw.split(' / '); ru = p.shift(); en = p.join(' / '); }
+    else if (raw.includes('/')) { const p = raw.split('/'); ru = p.shift(); en = p.join('/'); }
+    else if (raw.includes(':')) { const p = raw.split(':'); ru = p.shift(); en = p.join(':'); }
+    ru = String(ru || '').trim(); en = String(en || '').trim();
+    const name = ru || en;
+    return { name, ru: ru || name, en: en || name };
+}
+
+function parseSides(value){
+    const one = item => {
+        if (item && typeof item === 'object') return { name:String(item.name || item.name_ru || item.name_en || '').trim(), name_ru:String(item.name_ru || item.name || item.name_en || '').trim(), name_en:String(item.name_en || item.name || item.name_ru || '').trim() };
+        const p = splitBilingualName(item);
+        return { name:p.name, name_ru:p.ru, name_en:p.en };
+    };
+    const list = Array.isArray(value) ? value : String(value || '').split('|');
+    return list.map(one).filter(item => item.name);
+}
+
+function parseExtraOptions(value){
+    const one = rawValue => {
+        if (rawValue && typeof rawValue === 'object') return { name:String(rawValue.name || rawValue.name_ru || rawValue.name_en || '').trim(), name_ru:String(rawValue.name_ru || rawValue.name || rawValue.name_en || '').trim(), name_en:String(rawValue.name_en || rawValue.name || rawValue.name_ru || '').trim(), price:Number(rawValue.price || 0) };
+        const raw = String(rawValue || '').trim();
+        const lastColon = raw.lastIndexOf(':');
+        let namePart = raw, pricePart = '0';
+        if (lastColon !== -1) { namePart = raw.slice(0, lastColon); pricePart = raw.slice(lastColon + 1); }
+        const p = splitBilingualName(namePart);
+        return { name:p.name, name_ru:p.ru, name_en:p.en, price:Number(String(pricePart || '0').replace(/[^0-9]/g, '') || 0) };
+    };
+    const list = Array.isArray(value) ? value : String(value || '').replace(/\r/g,'\n').replace(/\|/g,'\n').split('\n');
+    return list.map(one).filter(item => item.name);
+}
+
+function normalizeProduct(item){
+    return { id:String(item.id), category:String(item.category_id || item.category || ''), name:{ru:item.name_ru || item.name?.ru || item.name || '', en:item.name_en || item.name?.en || item.name_ru || item.name || ''}, desc:{ru:item.description_ru || item.desc?.ru || item.description || '', en:item.description_en || item.desc?.en || item.description_ru || item.description || ''}, price:Number(item.price || 0), old_price:item.old_price || null, img:imageOf(item), storage_img:storageImageOf(item), badge:item.badge || '', weight:item.weight || '', side_options:parseSides(item.side_options), extra_options:parseExtraOptions(item.extra_options), is_available:item.is_available !== 0 && item.is_available !== false, sort_order:Number(item.sort_order || 100) };
+}
+function productName(p){ return state.lang === 'ru' ? (p.name.ru || p.name.en) : (p.name.en || p.name.ru); }
+function productDesc(p){ return state.lang === 'ru' ? (p.desc.ru || p.desc.en) : (p.desc.en || p.desc.ru); }
+function optionLabel(o){ return state.lang === 'ru' ? (o.name_ru || o.name || o.name_en || '') : (o.name_en || o.name || o.name_ru || ''); }
+function categoryTitle(c){ return state.lang === 'ru' ? (c.title_ru || c.name_ru || c.title || c.title_en || c.name || '') : (c.title_en || c.name_en || c.title || c.title_ru || c.name || ''); }
+function extrasLabel(extras){ return (extras || []).map(x => `${optionLabel(x)}${Number(x.price || 0) ? ' +' + formatPrice(x.price) : ''}`).join(', '); }
+function getPaymentMethod(){ return document.querySelector('input[name="payment_method"]:checked')?.value || 'cash'; }
+function pad2(v){ return String(v).padStart(2,'0'); }
+function toDateTimeLocalValue(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+function setDefaultDeliveryDateTime(){ const input = document.getElementById('order-delivery-datetime'); if (!input) return; input.removeAttribute('min'); if (!input.value) { const d = new Date(); d.setSeconds(0,0); input.value = toDateTimeLocalValue(d); } }
+function formatDeliveryDateTime(value){ if (!value) return ''; const d = new Date(value); if (Number.isNaN(d.getTime())) return value; return d.toLocaleString(state.lang === 'ru' ? 'ru-RU' : 'en-US', {year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}); }
+
+function districtApiValue(value){ return {districtOceanPark1:'Ocean Park 1', districtOceanPark2:'Ocean Park 2', districtEcoPark:'Eco Park', districtHanoi:'Hanoi'}[value] || value; }
+function deliveryKeyFromDistrict(d){ return {'Ocean Park 1':'districtOceanPark1','Ocean Park 2':'districtOceanPark2','Eco Park':'districtEcoPark','Hanoi':'districtHanoi'}[d] || d; }
+
+function calculateDelivery(subtotal){
+    const type = document.getElementById('order-type')?.value || 'delivery';
+    const district = districtApiValue(document.getElementById('order-district')?.value || 'districtOceanPark1');
+    const cashFee = getPaymentMethod() === 'cash' ? 20000 : 0;
+    if (type !== 'delivery') return {delivery_fee:0, payment_cash_fee:cashFee, delivery_total:cashFee, delivery_label:cashFee ? `${t('free')} + ${formatPrice(cashFee)}` : t('free'), delivery_note:cashFee ? `${t('cashFee')}: ${formatPrice(cashFee)}.` : ''};
+    const setting = state.deliverySettings.find(x => x.district === district);
+    let base = 0, label = t('free'), note = '';
+    if (setting) {
+        const min = Number(setting.min_free_amount || 0), fee = Number(setting.delivery_fee || 0), grabLabel = setting.grab_label || '';
+        if (district === 'Hanoi' && subtotal < 200000 && grabLabel) { label = grabLabel; note = grabLabel; }
+        else if (min > 0 && subtotal < min) { base = fee; label = formatPrice(base); note = `${state.lang === 'ru' ? 'Бесплатно от' : 'Free from'} ${formatPrice(min)}.`; }
+        else { label = t('free'); note = min ? `${state.lang === 'ru' ? 'Бесплатная доставка от' : 'Free delivery from'} ${formatPrice(min)}.` : ''; }
+    } else {
+        if (district === 'Ocean Park 2' || district === 'Eco Park') base = subtotal >= 200000 ? 0 : 50000;
+        if (district === 'Hanoi') { if (subtotal >= 500000) base = 0; else if (subtotal >= 200000) base = 80000; else { base = 0; label = t('grab'); } }
+        if (base) label = formatPrice(base);
+    }
+    if (cashFee) { label = `${label} + ${formatPrice(cashFee)}`; note = `${note ? note + ' ' : ''}${t('cashFee')}: ${formatPrice(cashFee)}.`; }
+    return {delivery_fee:base, payment_cash_fee:cashFee, delivery_total:base + cashFee, delivery_label:label, delivery_note:note};
+}
+
+function applyTexts(){
+    document.documentElement.lang = state.lang;
+    document.getElementById('lang-ru').classList.toggle('active', state.lang === 'ru');
+    document.getElementById('lang-en').classList.toggle('active', state.lang === 'en');
+    const ids = {menu:'menu-title', cart:'cart-title', profile:'nav-profile', name:'label-name', phone:'label-phone', type:'label-type', district:'label-district', address:'label-address', deliveryDateTime:'label-delivery-datetime', deliveryDateTimeNote:'delivery-datetime-note', payment:'label-payment', cash:'payment-cash-label', transfer:'payment-transfer-label', card:'payment-card-label', comment:'label-comment', subtotal:'subtotal-label', deliveryFee:'delivery-label', total:'total-label', checkout:'checkout', history:'profile-subtitle', workingHours:'working-hours-title'};
+    Object.entries(ids).forEach(([key,id]) => { const el = document.getElementById(id); if (el) el.textContent = t(key); });
+    document.getElementById('nav-menu').textContent = t('menu');
+    document.getElementById('nav-cart').textContent = t('cart');
+    document.getElementById('nav-reviews').textContent = t('reviews');
+    document.getElementById('history-title').textContent = t('history');
+    const reviewTexts = {
+        'reviews-page-title':'reviews',
+        'reviews-page-subtitle':'reviewsSubtitle',
+        'review-form-title':'reviewForm',
+        'review-name-label':'reviewName',
+        'review-rating-label':'reviewRating',
+        'review-text-label':'reviewText',
+        'review-submit':'reviewSubmit',
+        'reviews-list-title':'reviewGuests',
+        'review-thanks':'reviewThanks',
+        'reviews-disabled':'reviewDisabled',
+        'review-modal-title':'reviewOrderTitle',
+        'review-modal-subtitle':'reviewOrderSubtitle',
+        'review-modal-name-label':'reviewName',
+        'review-modal-rating-label':'reviewRating',
+        'review-modal-text-label':'reviewText',
+        'review-modal-later':'reviewLater',
+        'review-modal-submit':'reviewSubmit'
+    };
+    Object.entries(reviewTexts).forEach(([id,key]) => { const el = document.getElementById(id); if (el) el.textContent = t(key); });
+    const reviewText = document.getElementById('review-text'); if (reviewText) reviewText.placeholder = t('reviewPlaceholder');
+    const reviewModalText = document.getElementById('review-modal-text'); if (reviewModalText) reviewModalText.placeholder = t('reviewPlaceholder');
+    document.getElementById('order-type').options[0].textContent = t('delivery');
+    document.getElementById('order-type').options[1].textContent = t('pickup');
+}
+
+function renderHero(){
+    const hero = document.getElementById('hero');
+
+    const oldInput = document.getElementById('search-input');
+    if (oldInput) {
+        state.searchTerm = oldInput.value || '';
+        localStorage.setItem('toh_search', state.searchTerm);
+    }
+
+    const banners = state.banners.length
+        ? state.banners
+        : [{
+            title_ru:'Taste of Home',
+            title_en:'Taste of Home',
+            subtitle_ru:'Домашняя еда с теплом',
+            subtitle_en:'Homemade food with warmth'
+        }];
+
+    const safeBanners = banners.slice(0,3);
+
+    function bannerTitle(b){
+        return state.lang === 'ru'
+            ? (b.title_ru || b.title_en || 'Taste of Home')
+            : (b.title_en || b.title_ru || 'Taste of Home');
+    }
+
+    function bannerSubtitle(b){
+        return state.lang === 'ru'
+            ? (b.subtitle_ru || b.subtitle_en || '')
+            : (b.subtitle_en || b.subtitle_ru || '');
+    }
+
+    hero.innerHTML = `
+        ${safeBanners.map((b,i) => `
+            <div class="hero-slide ${i===0?'active':''}" data-hero-index="${i}" style="background-image:url('${escapeHtml(imageOf(b))}')"></div>
+        `).join('')}
+
+        <div class="hero-content hero-content-fixed">
+            <h1 class="hero-title" id="hero-fixed-title">${escapeHtml(bannerTitle(safeBanners[0] || {}))}</h1>
+            <p class="hero-subtitle" id="hero-fixed-subtitle">${escapeHtml(bannerSubtitle(safeBanners[0] || {}))}</p>
+            <div class="search">
+                <span>🔍</span>
+                <input id="search-input" placeholder="${escapeHtml(t('search'))}" value="${escapeHtml(state.searchTerm || '')}" autocomplete="off">
+            </div>
+        </div>
+    `;
+
+    clearInterval(state.heroTimer);
+
+    let idx = 0;
+
+    function updateHeroText(index){
+        const banner = safeBanners[index] || safeBanners[0] || {};
+        const titleEl = document.getElementById('hero-fixed-title');
+        const subtitleEl = document.getElementById('hero-fixed-subtitle');
+
+        if (titleEl) titleEl.textContent = bannerTitle(banner);
+        if (subtitleEl) subtitleEl.textContent = bannerSubtitle(banner);
+    }
+
+    state.heroTimer = setInterval(() => {
+        const slides = [...document.querySelectorAll('.hero-slide')];
+
+        if (slides.length <= 1) return;
+
+        slides[idx]?.classList.remove('active');
+        idx = (idx + 1) % slides.length;
+        slides[idx]?.classList.add('active');
+        updateHeroText(idx);
+    }, 4500);
+
+    const input = document.getElementById('search-input');
+
+    if (input) {
+        input.addEventListener('input', () => {
+            state.searchTerm = input.value || '';
+            localStorage.setItem('toh_search', state.searchTerm);
+            renderProducts();
+        });
+    }
+}
+
+function renderWorkingHours(){
+    const block = document.getElementById('working-hours-block'), text = document.getElementById('working-hours-text');
+    const value = state.lang === 'ru' ? String(state.workingHoursRu || state.workingHours || '').trim() : String(state.workingHoursEn || state.workingHours || '').trim();
+    block.classList.toggle('active', Boolean(value));
+    text.textContent = value;
+}
+
+function renderCategories(){
+    const categories = [{id:'all', title_ru:t('all'), title_en:t('all')}, ...state.categories];
+    document.getElementById('categories').innerHTML = categories.map(c => `<button class="cat ${state.activeCategory===String(c.id)?'active':''}" data-cat="${escapeHtml(c.id)}">${escapeHtml(String(c.id)==='all' ? t('all') : categoryTitle(c))}</button>`).join('');
+}
+
+function renderDistricts(){
+    const defaults = [{district:'Ocean Park 1'}, {district:'Ocean Park 2'}, {district:'Eco Park'}, {district:'Hanoi'}];
+    const list = state.deliverySettings.length ? state.deliverySettings : defaults;
+    document.getElementById('order-district').innerHTML = list.map(item => `<option value="${escapeHtml(deliveryKeyFromDistrict(item.district))}">${escapeHtml(item.district)}</option>`).join('');
+}
+
+function filteredProducts(){
+    const inputValue = document.getElementById('search-input')?.value || state.searchTerm || '';
+    const term = inputValue.toLowerCase().trim();
+
+    state.searchTerm = inputValue;
+
+    return state.products.filter(p => {
+        const byCategory = state.activeCategory === 'all' || String(p.category) === String(state.activeCategory);
+        const text = `${productName(p)} ${productDesc(p)}`.toLowerCase();
+        return byCategory && (!term || text.includes(term));
+    });
+}
+
+function renderProducts(){
+    const box = document.getElementById('products');
+    if (state.isLoading) { box.innerHTML = `<div class="empty">${t('loading')}</div>`; return; }
+    const list = filteredProducts();
+    if (!list.length) { box.innerHTML = `<div class="empty">${state.products.length ? 'Ничего не найдено' : t('loadError')}</div>`; return; }
+    box.innerHTML = list.map(p => `<article class="product" data-product="${escapeHtml(p.id)}">${p.badge ? `<div class="badge">${escapeHtml(p.badge)}</div>` : ''}<img src="${escapeHtml(p.img)}" alt="" onerror="this.onerror=null;this.src='${PLACEHOLDER_IMG}'"><div class="product-body"><div class="product-name">${escapeHtml(productName(p))}</div>${p.weight ? `<div class="product-weight">${escapeHtml(p.weight)}</div>` : ''}${p.side_options.length ? `<div class="side-mark">${t('side')}: ${p.side_options.map(optionLabel).map(escapeHtml).join(' / ')}</div>` : ''}<div class="product-bottom"><div class="price">${formatPrice(p.price)}</div><button class="add" type="button" data-add="${escapeHtml(p.id)}">+</button></div></div></article>`).join('');
+}
+
+function openProduct(id){
+    const p = state.products.find(x => String(x.id) === String(id));
+    if (!p) return;
+    state.selectedProduct = p;
+    state.selectedSide = p.side_options.length ? p.side_options[0] : null;
+    state.selectedExtras = [];
+    document.getElementById('modal-img').src = p.img;
+    document.getElementById('modal-name').textContent = productName(p);
+    document.getElementById('modal-price').textContent = formatPrice(p.price);
+    document.getElementById('modal-desc').textContent = productDesc(p);
+    document.getElementById('modal-close').textContent = t('close');
+    document.getElementById('modal-add').textContent = t('add');
+    const sideHtml = p.side_options.length ? `<h3 style="margin:14px 0 8px;">${t('chooseSide')}</h3><div class="side-options">${p.side_options.map((s,i) => `<button type="button" class="side-option ${i===0?'active':''}" data-side-index="${i}">${escapeHtml(optionLabel(s))}</button>`).join('')}</div>` : '';
+    const extrasHtml = p.extra_options.length ? `<div class="extra-options"><div class="extra-title">${t('addOn')}</div>${p.extra_options.map((e,i) => `<label class="extra-option"><input type="checkbox" data-extra-index="${i}"><span>${escapeHtml(optionLabel(e))}${Number(e.price||0) ? ` +${formatPrice(e.price)}` : ''}</span></label>`).join('')}</div>` : '';
+    document.getElementById('modal-sides').innerHTML = sideHtml + extrasHtml;
+    document.getElementById('product-modal').classList.add('active');
+}
+
+function normalizeCartExtras(list){ return (list || []).map(x => ({name:optionLabel(x), name_ru:x.name_ru || x.name || '', name_en:x.name_en || x.name || '', price:Number(x.price || 0)})); }
+function extrasKey(extras){ return (extras || []).map(x => `${x.name_ru || x.name}:${x.name_en || x.name}:${Number(x.price || 0)}`).sort().join('|') || 'no_extras'; }
+function extrasTotal(extras){ return (extras || []).reduce((sum,x) => sum + Number(x.price || 0), 0); }
+
+function getCartTargetRect(){
+    const icon = document.querySelector('[data-tab="cart"] .nav-icon') || document.getElementById('cart-badge');
+    if (!icon) return {left:window.innerWidth/2-29, top:window.innerHeight-120, width:58, height:58};
+    const r = icon.getBoundingClientRect();
+    return {left:r.left, top:r.top, width:r.width || 58, height:r.height || 58};
+}
+function showAddAnimation(product, triggerEl){
+    console.log('✅ ADD ANIMATION v1400');
+
+    const toast = document.getElementById('add-toast') || (() => {
+        const el = document.createElement('div');
+        el.id = 'add-toast';
+        el.className = 'add-toast';
+        document.body.appendChild(el);
+        return el;
+    })();
+
+    toast.innerHTML = `<span>✅</span><span>${escapeHtml(t('added'))}</span>`;
+    toast.classList.remove('show');
+    void toast.offsetWidth;
+    toast.classList.add('show');
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer = setTimeout(() => toast.classList.remove('show'), 1700);
+
+    const navIcon = document.querySelector('[data-tab="cart"] .nav-icon');
+    const badge = document.getElementById('cart-badge');
+    [navIcon, badge].forEach(el => {
+        if (!el) return;
+        el.classList.remove('cart-bump');
+        void el.offsetWidth;
+        el.classList.add('cart-bump');
+    });
+
+    const card = triggerEl?.closest?.('.product') || [...document.querySelectorAll('.product')].find(el => String(el.dataset.product) === String(product?.id));
+    if (card) {
+        card.classList.remove('added-pulse');
+        void card.offsetWidth;
+        card.classList.add('added-pulse');
+    }
+
+    const addBtn = triggerEl?.closest?.('.add') || card?.querySelector('.add');
+    if (addBtn) {
+        addBtn.classList.remove('just-added');
+        void addBtn.offsetWidth;
+        addBtn.classList.add('just-added');
+    }
+
+    const pop = document.createElement('div');
+    pop.className = 'add-pop';
+    pop.textContent = '+1';
+
+    const sourceRect = triggerEl?.getBoundingClientRect?.() || card?.getBoundingClientRect?.();
+    if (sourceRect) {
+        pop.style.left = (sourceRect.left + sourceRect.width / 2 - 29) + 'px';
+        pop.style.top = (sourceRect.top + sourceRect.height / 2 - 29) + 'px';
+    } else {
+        pop.style.left = (window.innerWidth / 2 - 29) + 'px';
+        pop.style.top = (window.innerHeight / 2 - 29) + 'px';
+    }
+
+    document.body.appendChild(pop);
+    setTimeout(() => pop.remove(), 800);
+}
+
+function addToCart(product, sideChoice, selectedExtras = [], triggerEl = null){
+    if (!product || state.addLock) return;
+    state.addLock = true;
+    setTimeout(() => { state.addLock = false; }, 260);
+
+    if (!product.is_available) { tg.showAlert(t('unavailable')); return; }
+    if (product.side_options.length && !sideChoice) { tg.showAlert(t('needSide')); return; }
+
+    showAddAnimation(product, triggerEl);
+
+    const sideObj = sideChoice && typeof sideChoice === 'object'
+        ? sideChoice
+        : (product.side_options.find(o => optionLabel(o) === sideChoice || o.name === sideChoice || o.name_ru === sideChoice || o.name_en === sideChoice) || null);
+    const sideLabel = sideObj ? optionLabel(sideObj) : String(sideChoice || '');
+    const sideRu = sideObj ? (sideObj.name_ru || sideObj.name || sideLabel) : sideLabel;
+    const sideEn = sideObj ? (sideObj.name_en || sideObj.name || sideLabel) : sideLabel;
+    const extras = normalizeCartExtras(selectedExtras);
+    const key = `${product.id}__${sideRu || 'no_side'}__${sideEn || 'no_side'}__${extrasKey(extras)}`;
+    const totalExtra = extrasTotal(extras);
+    const existing = state.cart.find(x => x.cartKey === key);
+
+    if (existing) {
+        existing.qty = Number(existing.qty || 0) + 1;
+        existing.img = product.storage_img || existing.img || '';
+        existing.name = productName(product);
+        existing.base_price = Number(product.price || 0);
+        existing.price = Number(product.price || 0) + totalExtra;
+        existing.extras = extras;
+        existing.selected_extras = extras;
+        existing.side_choice = sideLabel;
+        existing.side_choice_ru = sideRu;
+        existing.side_choice_en = sideEn;
+    } else {
+        state.cart.push({
+            cartKey:key,
+            id:product.id,
+            img:product.storage_img || '',
+            name:productName(product),
+            base_price:Number(product.price || 0),
+            price:Number(product.price || 0) + totalExtra,
+            extras,
+            selected_extras:extras,
+            qty:1,
+            side_choice:sideLabel,
+            side_choice_ru:sideRu,
+            side_choice_en:sideEn
+        });
+    }
+
+    saveCart();
+    renderCart();
+    tg.HapticFeedback?.impactOccurred?.('medium');
+}
+
+function syncCart(){
+    state.cart = state.cart.map(item => {
+        const product = state.products.find(p => String(p.id) === String(item.id));
+        if (!product) return null;
+        const sideRu = item.side_choice_ru || item.side_choice || '';
+        const sideEn = item.side_choice_en || item.side_choice || '';
+        const sideObj = product.side_options.find(o => o.name_ru === sideRu || o.name_en === sideEn || o.name === item.side_choice) || null;
+        if (product.side_options.length && !sideObj) return null;
+        const extras = (item.extras || item.selected_extras || []).filter(e => product.extra_options.some(o => o.name === e.name || o.name_ru === e.name_ru || o.name_en === e.name_en));
+        const totalExtra = extrasTotal(extras);
+        const sideLabel = sideObj ? optionLabel(sideObj) : '';
+        return {...item, img:product.storage_img || item.img || '', name:productName(product), base_price:Number(product.price || 0), price:Number(product.price || 0) + totalExtra, extras, selected_extras:extras, side_choice:sideLabel, side_choice_ru:sideObj ? (sideObj.name_ru || sideObj.name || sideLabel) : '', side_choice_en:sideObj ? (sideObj.name_en || sideObj.name || sideLabel) : '', cartKey:`${product.id}__${sideObj ? (sideObj.name_ru || sideObj.name || sideLabel) : 'no_side'}__${sideObj ? (sideObj.name_en || sideObj.name || sideLabel) : 'no_side'}__${extrasKey(extras)}`};
+    }).filter(Boolean);
+    saveCart();
+}
+
+function renderCart(){
+    setDefaultDeliveryDateTime();
+
+    const list = document.getElementById('cart-list');
+    const badge = document.getElementById('cart-badge');
+
+    const totalQty = state.cart.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+
+    if (badge) {
+        badge.textContent = totalQty;
+        badge.style.display = totalQty ? 'flex' : 'none';
+    }
+
+    if (!list) return;
+
+    if (!state.cart.length) {
+        list.innerHTML = `<div class="empty">${t('cartEmpty')}</div>`;
+    } else {
+        list.innerHTML = state.cart.map((item, index) => `
+            <div class="cart-item" data-cart-index="${index}">
+                <img src="${escapeHtml(cartDisplayImage(item))}" onerror="this.onerror=null;this.src='${PLACEHOLDER_IMG}'">
+
+                <div class="cart-main">
+                    <div class="cart-name">${escapeHtml(item.name)}</div>
+                    ${item.side_choice ? `<div class="cart-side">${t('side')}: ${escapeHtml(state.lang === 'ru' ? (item.side_choice_ru || item.side_choice) : (item.side_choice_en || item.side_choice))}</div>` : ''}
+                    ${item.extras?.length ? `<div class="cart-extra">${t('addOn')}: ${escapeHtml(extrasLabel(item.extras))}</div>` : ''}
+                    <div class="cart-price">${formatPrice(item.price)}</div>
+                </div>
+
+                <div class="qty">
+                    <button type="button" class="qty-btn" data-delta="-1" onclick="return window.__cartQtyButton(this, event);">−</button>
+                    <strong class="qty-number">${Number(item.qty || 0)}</strong>
+                    <button type="button" class="qty-btn" data-delta="1" onclick="return window.__cartQtyButton(this, event);">+</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    updateCartTotals();
+}
+
+function updateCartTotals(){
+    const subtotal = state.cart.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 0), 0);
+    const delivery = calculateDelivery(subtotal);
+    const total = subtotal + delivery.delivery_total;
+
+    const subtotalEl = document.getElementById('subtotal');
+    const deliveryEl = document.getElementById('delivery');
+    const deliveryNoteEl = document.getElementById('delivery-note');
+    const totalEl = document.getElementById('total');
+
+    if (subtotalEl) subtotalEl.textContent = formatPrice(subtotal);
+    if (deliveryEl) deliveryEl.textContent = delivery.delivery_label || formatPrice(delivery.delivery_total);
+    if (deliveryNoteEl) deliveryNoteEl.textContent = delivery.delivery_note || '';
+    if (totalEl) totalEl.textContent = formatPrice(total);
+
+    const orderType = document.getElementById('order-type');
+    const districtField = document.getElementById('district-field');
+    const addressField = document.getElementById('address-field');
+    const isDelivery = (orderType?.value || 'delivery') === 'delivery';
+
+    if (districtField) districtField.style.display = isDelivery ? 'block' : 'none';
+    if (addressField) addressField.style.display = isDelivery ? 'block' : 'none';
+}
+
+function updateCartBadge(){
+    const totalQty = state.cart.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+    const badge = document.getElementById('cart-badge');
+
+    if (badge) {
+        badge.textContent = totalQty;
+        badge.style.display = totalQty ? 'flex' : 'none';
+    }
+}
+
+function updateQty(index, delta){
+    index = Number(index);
+    delta = Number(delta || 0);
+
+    if (!Number.isInteger(index) || index < 0 || index >= state.cart.length || !delta) {
+        console.warn('QTY CLICK FAILED:', { index, delta, cartLength: state.cart.length });
+        return false;
+    }
+
+    const item = state.cart[index];
+    const nextQty = Number(item.qty || 0) + delta;
+
+    if (nextQty <= 0) {
+        state.cart.splice(index, 1);
+    } else {
+        item.qty = nextQty;
+    }
+
+    saveCart();
+    renderCart();
+    tg.HapticFeedback?.impactOccurred?.('light');
+    console.log('✅ QTY CHANGED v2300:', { index, delta, cart: state.cart });
+    return true;
+}
+
+window.__cartQtyButton = function(button, event){
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+    }
+
+    const row = button?.closest?.('.cart-item');
+    const index = Number(row?.dataset?.cartIndex);
+    const delta = Number(button?.dataset?.delta || 0);
+
+    return updateQty(index, delta) === true ? false : false;
+};
+
+window.cartQtyClick = function(event, index, delta){
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+    }
+
+    updateQty(index, delta);
+    return false;
+};
+
+function buildOrderPayload(){
+    const name = document.getElementById('order-name').value.trim();
+    const phone = document.getElementById('order-phone').value.trim();
+    const type = document.getElementById('order-type').value;
+    const address = document.getElementById('order-address').value.trim();
+    const district = districtApiValue(document.getElementById('order-district').value);
+    const payment = getPaymentMethod();
+    const deliveryDateTimeValue = document.getElementById('order-delivery-datetime').value;
+    const deliveryDateTimeFormatted = formatDeliveryDateTime(deliveryDateTimeValue);
+    const userComment = document.getElementById('order-comment').value.trim();
+    if (!name || !phone || (type === 'delivery' && !address)) { tg.showAlert(t('required')); return null; }
+    if (!deliveryDateTimeValue) { tg.showAlert(t('chooseDateTime')); return null; }
+    if (!state.cart.length) { tg.showAlert(t('cartEmpty')); return null; }
+    const subtotal = state.cart.reduce((sum,item) => sum + Number(item.price || 0) * Number(item.qty || 0), 0);
+    const delivery = calculateDelivery(subtotal); const total = subtotal + delivery.delivery_total;
+    const comment = userComment ? `${t('deliveryTimePrefix')}: ${deliveryDateTimeFormatted}\n${userComment}` : `${t('deliveryTimePrefix')}: ${deliveryDateTimeFormatted}`;
+    return { apiPayload:{ customer_name:name, phone, address:type === 'delivery' ? address : '', district:type === 'delivery' ? district : 'Самовывоз', order_type:type, payment_method:payment, delivery_time_hours:2, delivery_datetime:deliveryDateTimeFormatted, comment, telegram_user_id:String(tg.initDataUnsafe?.user?.id || ''), username:tg.initDataUnsafe?.user?.username || '', language:state.lang, items:state.cart.map(item => ({ product_id:String(item.id), qty:Number(item.qty || 0), side_choice:state.lang === 'ru' ? (item.side_choice_ru || item.side_choice || '') : (item.side_choice_en || item.side_choice || ''), selected_extras:item.extras || [] })) }, localView:{createdAt:new Date().toLocaleString(state.lang === 'ru' ? 'ru-RU' : 'en-US'), total:formatPrice(total), itemsSummary:state.cart.map(item => `${item.name}${item.side_choice ? ' / ' + t('side') + ': ' + (state.lang === 'ru' ? (item.side_choice_ru || item.side_choice) : (item.side_choice_en || item.side_choice)) : ''}${item.extras?.length ? ' / ' + t('addOn') + ': ' + extrasLabel(item.extras) : ''} × ${item.qty}`).join(', '), deliveryDateTime:deliveryDateTimeFormatted, customerName:name, telegramUserId:String(tg.initDataUnsafe?.user?.id || ''), username:tg.initDataUnsafe?.user?.username || ''} };
+}
+async function sendOrder(){
+    const order = buildOrderPayload(); if (!order) return;
+    tg.showConfirm(t('confirm'), async ok => {
+        if (!ok) return;
+        const btn = document.getElementById('checkout'); const old = btn.textContent;
+        try { btn.disabled = true; btn.textContent = t('sending'); const result = await apiPost('/api/orders', order.apiPayload); const reviewOrder = {order_id:result.order_id || '', order_number:result.order_number || '', customer_name:order.localView.customerName || order.apiPayload.customer_name || '', telegram_user_id:order.localView.telegramUserId || order.apiPayload.telegram_user_id || '', username:order.localView.username || order.apiPayload.username || ''}; state.history.unshift({...order.localView, orderNumber:result.order_number ? `#${result.order_number}` : '', total:result.total_formatted || order.localView.total}); saveHistory(); state.cart = []; saveCart(); document.getElementById('order-phone').value = ''; document.getElementById('order-address').value = ''; document.getElementById('order-comment').value = ''; document.getElementById('order-delivery-datetime').value = ''; renderAll(); switchTab('menu'); tg.showAlert(`${t('success')}${result.order_number ? ': #' + result.order_number : ''}`); setTimeout(() => openReviewModal(reviewOrder), 700); }
+        catch (error) { console.error(error); tg.showAlert('Error: ' + error.message); }
+        finally { btn.disabled = false; btn.textContent = old; }
+    });
+}
+function renderHistory(){ const box = document.getElementById('history'); if (!state.history.length) { box.innerHTML = `<div class="empty" style="padding:30px;">${t('noHistory')}</div>`; return; } box.innerHTML = state.history.map(item => `<div class="history-item"><strong>${escapeHtml(item.orderNumber || '')} ${escapeHtml(item.total || '')}</strong><br><span style="color:#777">${escapeHtml(item.createdAt || '')}</span><br>${item.deliveryDateTime ? `<span style="color:#777">${t('deliveryTimePrefix')}: ${escapeHtml(item.deliveryDateTime)}</span><br>` : ''}<span>${escapeHtml(item.itemsSummary || '')}</span></div>`).join(''); }
+
+function reviewStars(rating){ const n = Math.max(1, Math.min(5, Number(rating || 5))); return '★'.repeat(n) + '☆'.repeat(5 - n); }
+function renderStarPicker(containerId, rating, attr){
+    const box = document.getElementById(containerId);
+    if (!box) return;
+    box.innerHTML = [1,2,3,4,5].map(n => `<button type="button" class="star-btn ${n <= rating ? 'active' : ''}" ${attr}="${n}">★</button>`).join('');
+}
+function currentTelegramName(){
+    const user = tg.initDataUnsafe?.user || {};
+    return [user.first_name || '', user.last_name || ''].join(' ').trim() || user.username || '';
+}
+function renderReviewForm(){
+    renderStarPicker('review-stars', state.reviewRating, 'data-review-star');
+    renderStarPicker('review-modal-stars', state.reviewModalRating, 'data-review-modal-star');
+    const name = document.getElementById('review-name');
+    if (name && !name.value) name.value = document.getElementById('order-name')?.value || currentTelegramName();
+}
+function renderReviews(){
+    const enabled = String(state.reviewSettings?.reviews_enabled ?? '1') === '1';
+    const disabled = document.getElementById('reviews-disabled');
+    const form = document.getElementById('review-form-block');
+    const list = document.getElementById('reviews-list');
+    if (disabled) disabled.style.display = enabled ? 'none' : 'block';
+    if (form) form.style.display = enabled ? 'block' : 'none';
+    if (!list) return;
+    renderReviewForm();
+    if (!enabled) { list.innerHTML = ''; return; }
+    if (!state.reviews.length) { list.innerHTML = `<div class="empty" style="padding:30px 18px;">${t('reviewEmpty')}</div>`; return; }
+    list.innerHTML = state.reviews.map(r => `<div class="review-card"><div class="review-card-top"><div><div class="review-name">${escapeHtml(r.customer_name || 'Taste of Home guest')}</div><div class="review-date">${escapeHtml(r.created_at || '')}</div></div><div class="review-stars">${reviewStars(r.rating)}</div></div>${r.text ? `<div class="review-text">${escapeHtml(r.text)}</div>` : ''}${r.source ? `<span class="review-source">${escapeHtml(r.source)}</span>` : ''}</div>`).join('');
+}
+function buildReviewPayload(fromModal = false){
+    const name = (fromModal ? document.getElementById('review-modal-name')?.value : document.getElementById('review-name')?.value || document.getElementById('order-name')?.value || currentTelegramName() || '').trim();
+    const text = (fromModal ? document.getElementById('review-modal-text')?.value : document.getElementById('review-text')?.value || '').trim();
+    const rating = fromModal ? state.reviewModalRating : state.reviewRating;
+    if (!rating || !text) { tg.showAlert(t('reviewRequired')); return null; }
+    const user = tg.initDataUnsafe?.user || {};
+    const order = fromModal ? (state.reviewOrder || {}) : {};
+    return {
+        order_id: order.order_id || '',
+        order_number: order.order_number || '',
+        customer_name: name || order.customer_name || currentTelegramName() || '',
+        telegram_user_id: String(user.id || order.telegram_user_id || ''),
+        username: user.username || order.username || '',
+        rating,
+        text,
+        source:'app'
+    };
+}
+async function submitReview(fromModal = false){
+    const payload = buildReviewPayload(fromModal);
+    if (!payload) return;
+    const btn = document.getElementById(fromModal ? 'review-modal-submit' : 'review-submit');
+    const old = btn?.textContent || '';
+    try {
+        if (btn) { btn.disabled = true; btn.textContent = t('sending'); }
+        await apiPost('/api/reviews', payload);
+        if (fromModal) {
+            document.getElementById('review-modal').classList.remove('active');
+            document.getElementById('review-modal-text').value = '';
+        } else {
+            document.getElementById('review-text').value = '';
+            document.getElementById('review-thanks')?.classList.add('active');
+            setTimeout(() => document.getElementById('review-thanks')?.classList.remove('active'), 2500);
+        }
+        state.reviews = await apiGet('/api/reviews').catch(() => state.reviews);
+        renderReviews();
+        tg.showAlert(t('reviewThanks'));
+    } catch (error) {
+        console.error(error);
+        tg.showAlert('Error: ' + error.message);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = old || t('reviewSubmit'); }
+    }
+}
+function openReviewModal(order){
+    if (String(state.reviewSettings?.reviews_enabled ?? '1') !== '1') return;
+    state.reviewOrder = order || {};
+    state.reviewModalRating = 5;
+    const name = document.getElementById('review-modal-name');
+    const text = document.getElementById('review-modal-text');
+    if (name) name.value = order?.customer_name || document.getElementById('order-name')?.value || currentTelegramName() || '';
+    if (text) text.value = '';
+    renderReviewForm();
+    document.getElementById('review-modal')?.classList.add('active');
+}
+function switchTab(tab){ document.querySelectorAll('.tab').forEach(x => x.classList.remove('active')); document.getElementById(`${tab}-tab`)?.classList.add('active'); document.querySelectorAll('.nav').forEach(x => x.classList.toggle('active', x.dataset.tab === tab)); renderCart(); renderReviews(); }
+function renderAll(){ applyTexts(); renderHero(); renderWorkingHours(); renderCategories(); renderDistricts(); renderProducts(); renderCart(); renderHistory(); renderReviews(); }
+
+function showLoadError(error){
+    document.getElementById('loading').textContent = '';
+    document.getElementById('products').innerHTML = `<div class="error-box"><strong>${escapeHtml(t('loadError'))}</strong><br><span style="font-size:12px;color:#777">${escapeHtml(error.message || error)}</span><br><button class="retry" type="button" id="retry-load">${escapeHtml(t('retry'))}</button></div>`;
+    document.getElementById('retry-load')?.addEventListener('click', loadData);
+}
+async function loadData(){
+    state.isLoading = true; document.getElementById('loading').textContent = '...'; renderProducts();
+    try {
+        const [categories, banners, menu, delivery, workingHours, reviews, reviewSettings] = await Promise.all([
+            apiGet('/api/categories').catch(() => []),
+            apiGet('/api/banners').catch(() => []),
+            apiGet('/api/menu'),
+            apiGet('/api/delivery/settings').catch(() => []),
+            apiGet('/api/settings/working-hours').catch(() => ({working_hours:'', working_hours_ru:'', working_hours_en:''})),
+            apiGet('/api/reviews').catch(() => []),
+            apiGet('/api/settings/reviews').catch(() => ({reviews_enabled:'1', reviews_auto_publish:'1', review_followup_enabled:'1'}))
+        ]);
+        state.categories = Array.isArray(categories) ? categories : [];
+        state.banners = Array.isArray(banners) ? banners : [];
+        state.products = Array.isArray(menu) ? menu.map(normalizeProduct).sort((a,b) => a.sort_order - b.sort_order) : [];
+        state.deliverySettings = Array.isArray(delivery) ? delivery : [];
+        state.reviews = Array.isArray(reviews) ? reviews : [];
+        state.reviewSettings = reviewSettings || {reviews_enabled:'1', reviews_auto_publish:'1', review_followup_enabled:'1'};
+        state.workingHours = workingHours?.working_hours || '';
+        state.workingHoursRu = workingHours?.working_hours_ru || workingHours?.working_hours || '';
+        state.workingHoursEn = workingHours?.working_hours_en || workingHours?.working_hours || '';
+        syncCart(); state.isLoading = false; document.getElementById('loading').textContent = ''; renderAll();
+    } catch (error) { console.error('LOAD ERROR', error); state.isLoading = false; showLoadError(error); }
+}
+
+
+// FINAL FIX v2300: количество в корзине меняется только прямым onclick на кнопках.
+// Никаких touchend/pointerup/capture-обработчиков здесь нет, чтобы не ломать клики.
+document.addEventListener('click', event => {
+    if (event.target.closest?.('.qty-btn')) return;
+
+    const nav = event.target.closest('.nav'); if (nav) { switchTab(nav.dataset.tab); return; }
+    const lang = event.target.closest('[data-lang]'); if (lang) { state.lang = lang.dataset.lang; localStorage.setItem('toh_lang', state.lang); syncCart(); renderAll(); return; }
+    const cat = event.target.closest('[data-cat]'); if (cat) { state.activeCategory = cat.dataset.cat; renderCategories(); renderProducts(); return; }
+    const reviewStar = event.target.closest('[data-review-star]'); if (reviewStar) { state.reviewRating = Number(reviewStar.dataset.reviewStar || 5); renderReviewForm(); return; }
+    const reviewModalStar = event.target.closest('[data-review-modal-star]'); if (reviewModalStar) { state.reviewModalRating = Number(reviewModalStar.dataset.reviewModalStar || 5); renderReviewForm(); return; }
+    if (event.target.id === 'review-submit') { submitReview(false); return; }
+    if (event.target.id === 'review-modal-submit') { submitReview(true); return; }
+    if (event.target.id === 'review-modal-later' || event.target.id === 'review-modal') { document.getElementById('review-modal').classList.remove('active'); return; }
+    if (event.target.id === 'modal-close' || event.target.id === 'product-modal') { document.getElementById('product-modal').classList.remove('active'); return; }
+    if (event.target.id === 'modal-add') { if (state.selectedProduct) { addToCart(state.selectedProduct, state.selectedSide, state.selectedExtras, document.getElementById('modal-add')); document.getElementById('product-modal').classList.remove('active'); } return; }
+    const side = event.target.closest('[data-side-index]'); if (side && state.selectedProduct) { const i = Number(side.dataset.sideIndex); state.selectedSide = state.selectedProduct.side_options[i] || null; document.querySelectorAll('.side-option').forEach(x => x.classList.toggle('active', x.dataset.sideIndex === String(i))); return; }
+    const extra = event.target.closest('[data-extra-index]'); if (extra && state.selectedProduct) { const i = Number(extra.dataset.extraIndex); const opt = state.selectedProduct.extra_options[i]; if (opt) { if (extra.checked) state.selectedExtras.push(opt); else state.selectedExtras = state.selectedExtras.filter(x => x.name !== opt.name); } return; }
+    const add = event.target.closest('[data-add]'); if (add) { event.preventDefault(); event.stopPropagation(); const product = state.products.find(x => String(x.id) === String(add.dataset.add)); if (!product) return; if (product.side_options.length || product.extra_options.length) openProduct(product.id); else addToCart(product, '', [], add); return; }
+    const card = event.target.closest('[data-product]'); if (card) openProduct(card.dataset.product);
+});
+
+document.addEventListener('change', event => { if (event.target.name === 'payment_method' || event.target.id === 'order-type' || event.target.id === 'order-district' || event.target.id === 'order-delivery-datetime') renderCart(); });
+document.getElementById('order-form').addEventListener('submit', event => { event.preventDefault(); sendOrder(); });
+
+console.log('✅ CART ADD + QTY + REVIEWS + HERO READABILITY FIX LOADED v2501');
+loadData();
+</script>
+</body>
+</html>
